@@ -92,7 +92,6 @@ for (k in numSims) {
   saveRDS(mFitAll, paste0("OrdinalModel_", k, "Feats.Rds"))
   
   ## -- 10-fold cross-validation
-  # - ensure reproducibility:
   set.seed(10071974)
   # - folds:
   foldSize <- round(length(mFrame$Rating)/10)
@@ -372,7 +371,7 @@ ggplot(resultsFrame, aes(x = numSims,
   geom_path(color = "firebrick", size = .25) + 
   geom_point(size = 1.5, color = "firebrick") +
   geom_point(size = 1, color = "white") +
-  theme_bw() + ggtitle('100k MovieLens dataset\nRMSE from CLM() Predictions') +
+  theme_bw() + ggtitle('100k MovieLens dataset\nRMSE from CLM() Predictions\nNearest Neighbours from Similarity Matrices Only') +
   xlab("Number of Features used per Feature Category") +
   ylab("Average RMSE (10-fold CV)") +
   theme(axis.title.x = element_text(size = 8)) +
@@ -663,4 +662,35 @@ ggplot(regPlotFrame, aes(x = numFeats,
   theme(legend.key = element_blank()) +
   scale_x_continuous(breaks = seq(5, 30, by = 5),
                      labels = seq(5, 30, by = 5))
+
+
+### --------------------------------------------------
+### --- Part 3.D: Model w. clm() {ordinal}
+### --- No imputation
+### --- Model Selection:
+### --- Proximity + Similarity Neighbourhoods VS
+### --- Similarity Neighbourhoods Only
+### --------------------------------------------------
+
+modelFiles <- list.files()
+modelRes <- matrix(rep(0,6*7), nrow = 6, ncol = 7)
+numSims <- seq(5, 30, by = 5)
+ct = 0
+for (k in numSims) {
+  ct = ct + 1
+  fileNameSimProx <- modelFiles[which(grepl(paste0("Model_",k,"F"), modelFiles, fixed = T))]
+  modelSimProx <- readRDS(fileNameSimProx)
+  fileNameSim <- modelFiles[which(grepl(paste0("SimMatricesOnly_",k,"F"), modelFiles, fixed = T))]
+  modelSim <- readRDS(fileNameSim)
+  testRes <- anova(modelSimProx, modelSim)
+  modelRes[ct, ] <- c(testRes$no.par, testRes$AIC, testRes$LR.stat[2],
+                     testRes$df[2], testRes$`Pr(>Chisq)`[2])
+}
+modelRes <- as.data.frame(modelRes)
+colnames(modelRes) <- c('Parameters_Model1', 'Parameters_Model2',
+                        'AIC_Model1', 'AIC_Model2',
+                        'LRTest','DF','Pr_TypeIErr')
+write.csv(modelRes, 'ModelSelection.csv')
+
+
 
